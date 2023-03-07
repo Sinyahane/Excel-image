@@ -1,0 +1,95 @@
+from PIL import Image, ImageDraw, ImageFont
+import openpyxl
+import os
+import textwrap
+from tkinter import filedialog, Tk
+import bidi.algorithm as bidi
+
+# 選擇要匯入的 Excel 文件
+root = Tk()
+root.withdraw()
+file_path = filedialog.askopenfilename(title='Select Excel File', filetypes=[('Excel Files', '*.xlsx;*.xls')])
+
+# 選擇要繪製的圖片
+root.withdraw()
+image_path = filedialog.askopenfilename(title='Select Image File', filetypes=[('Image Files', '*.png;*.jpg;*.jpeg')])
+
+# 將資料存到 output 中，如果沒有 output 的資料夾，就創建一個
+output_path = os.path.join(os.getcwd(), 'output')
+if not os.path.exists(output_path):
+    os.makedirs(output_path)
+print('Excel File Path:', file_path)
+print('Image File Path:', image_path)
+
+
+# 設置字體
+font = ImageFont.truetype('kaiu.ttf', 18)
+
+# 讀取 Excel 文件
+workbook = openpyxl.load_workbook(file_path)
+sheet = workbook.active
+
+# 讀取 Excel 中的數據
+data = []
+for row in sheet.iter_rows(values_only=True):
+    for i in range(0, len(row), 4):  # 每四個元素為一組
+        group = []
+        for j in range(i, i + 4):
+            if j < len(row):  # 判断 j 是否超出了 row 的範圍
+                cell_value = row[j] if row[j] is not None else ''
+                group.append(cell_value)
+        if len(group) == 4:  # 判斷 group 是否至少有 4 个元素
+            data.append(group)
+
+# 設置圖片和文字的位置
+base_pos = (50, 50)
+row_height = 200
+col_width = 500
+
+# 繪製數據到圖片上
+with Image.open(image_path) as im:
+    draw = ImageDraw.Draw(im)  # 加上縮排
+    for i, row_data in enumerate(data):
+        # 設置每一行的位置
+        pos = (base_pos[0], base_pos[0] + i * row_height)
+
+        # 繪製一列四欄的資料
+        for j, col_data in enumerate(row_data):
+            x = pos[0] + j * col_width
+            y = pos[1]
+
+            # 設置每個單元格文字的位置
+            if j == 0:  # 第一欄
+                draw.text((x + 30, y + 10), str(col_data), font=font, fill=(255, 255, 255))  # 調整 x, y 坐標
+            elif j == 1:  # 第二欄
+                vertical_text = bidi.get_display(str(col_data)) 
+                for k, char in enumerate(str(col_data)):
+                    char_x = x + 100  # 調整 x 坐標
+                    char_y = y + k * font.getsize(char)[1] # 設置每個文字的位置
+                    draw.text((char_x, char_y), char, font=font, fill=(0, 0, 0))
+            elif j == 2:  # 第三欄 
+                vertical_text = bidi.get_display(str(col_data)) 
+                for k, char in enumerate(str(col_data)):
+                    char_x = x + 200 # 調整 x 坐標
+                    char_y = y + k * font.getsize(char)[1]  # 設置每個文字的位置
+                    draw.text((char_x, char_y), char, font=font, fill=(0, 0, 0))
+            elif j == 3:  # 第四欄
+                vertical_text = bidi.get_display(str(col_data)) 
+                for k, char in enumerate(str(col_data)):
+                    char_x = x + 400  # 調整 x 坐標
+                    char_y = y + k * font.getsize(char)[1]  # 設置每個文字的位置
+                    draw.text((char_x, char_y), char, font=font, fill=(0, 0, 0))
+
+        if i % 6 == 5:
+            output_image_path = os.path.join(output_path, f'{i}.jpg')
+            im.save(output_image_path, 'JPEG')
+            im = Image.open(image_path)
+            draw = ImageDraw.Draw(im)
+            base_pos = (50, 50)  # 重新設置 base_pos
+            
+# 處理最後一批資料
+if len(data) % 6 != 0:
+    output_image_path = os.path.join(output_path, f'{len(data)}.jpg')
+    im.save(output_image_path, 'JPEG')
+
+
